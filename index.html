@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rubik's Cube Solver</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+            --text-color: #333;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--secondary-color);
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .panel {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 20px;
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .panel-title {
+            color: var(--primary-color);
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .cube-display-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .cube-3d {
+            width: 250px;
+            height: 250px;
+            perspective: 1000px;
+            margin: 20px 0;
+        }
+
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(-20deg) rotateY(-30deg);
+            transition: transform 0.5s ease;
+        }
+
+        .face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 2px;
+            padding: 5px;
+            box-sizing: border-box;
+            border: 2px solid #333;
+        }
+
+        .face.front { transform: translateZ(125px); background-color: rgba(0, 128, 0, 0.1); }
+        .face.back { transform: rotateY(180deg) translateZ(125px); background-color: rgba(0, 0, 255, 0.1); }
+        .face.right { transform: rotateY(90deg) translateZ(125px); background-color: rgba(255, 0, 0, 0.1); }
+        .face.left { transform: rotateY(-90deg) translateZ(125px); background-color: rgba(255, 165, 0, 0.1); }
+        .face.top { transform: rotateX(90deg) translateZ(125px); background-color: rgba(255, 255, 255, 0.1); }
+        .face.bottom { transform: rotateX(-90deg) translateZ(125px); background-color: rgba(255, 255, 0, 0.1); }
+
+        .sticker {
+            border-radius: 4px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .control-group h3 {
+            width: 100%;
+            margin: 0 0 10px 0;
+            color: var(--primary-color);
+        }
+
+        button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        button.primary {
+            background-color: var(--accent-color);
+        }
+
+        button.primary:hover {
+            background-color: #c0392b;
+        }
+
+        .solution-steps {
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .step {
+            padding: 12px;
+            margin-bottom: 10px;
+            background-color: #f8f9fa;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--secondary-color);
+            transition: all 0.2s ease;
+        }
+
+        .step:hover {
+            background-color: #e9f5ff;
+            transform: translateX(5px);
+        }
+
+        .step-number {
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-right: 10px;
+        }
+
+        .move {
+            display: inline-block;
+            padding: 3px 8px;
+            background-color: var(--secondary-color);
+            color: white;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: var(--border-radius);
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status.solved {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status.scrambled {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status.initial {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .cube-3d {
+                width: 200px;
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Rubik's Cube Solver</h1>
+        <p>Visualize and solve the Rubik's Cube step by step</p>
+    </div>
+
+    <div class="container">
+        <div class="panel cube-display-container">
+            <h2 class="panel-title">Cube Visualization</h2>
+            <div id="status" class="status initial">Cube is in solved state</div>
+            <div class="cube-3d">
+                <div class="cube" id="cube-3d">
+                    <!-- Cube faces will be generated by JavaScript -->
+                </div>
+            </div>
+            <div class="controls">
+                <button id="scramble" class="primary">Scramble Cube</button>
+                <div class="control-group">
+                    <button id="solve">Solve Cube</button>
+                    <button id="reset">Reset Cube</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">Manual Rotations</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <h3>Front Face</h3>
+                    <button data-rotation="F">Front (F)</button>
+                    <button data-rotation="F'">Front' (F')</button>
+                </div>
+                <div class="control-group">
+                    <h3>Back Face</h3>
+                    <button data-rotation="B">Back (B)</button>
+                    <button data-rotation="B'">Back' (B')</button>
+                </div>
+                <div class="control-group">
+                    <h3>Up Face</h3>
+                    <button data-rotation="U">Up (U)</button>
+                    <button data-rotation="U'">Up' (U')</button>
+                </div>
+                <div class="control-group">
+                    <h3>Down Face</h3>
+                    <button data-rotation="D">Down (D)</button>
+                    <button data-rotation="D'">Down' (D')</button>
+                </div>
+                <div class="control-group">
+                    <h3>Left Face</h3>
+                    <button data-rotation="L">Left (L)</button>
+                    <button data-rotation="L'">Left' (L')</button>
+                </div>
+                <div class="control-group">
+                    <h3>Right Face</h3>
+                    <button data-rotation="R">Right (R)</button>
+                    <button data-rotation="R'">Right' (R')</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">Solution Steps</h2>
+            <div class="solution-steps" id="solution-steps">
+                <div id="steps-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class RubiksCube {
+            constructor() {
+                this.reset();
+            }
+            
+            reset() {
+                this.faces = {
+                    'U': Array(3).fill().map(() => Array(3).fill('w')), // White
+                    'D': Array(3).fill().map(() => Array(3).fill('y')), // Yellow
+                    'F': Array(3).fill().map(() => Array(3).fill('g')), // Green
+                    'B': Array(3).fill().map(() => Array(3).fill('b')), // Blue
+                    'L': Array(3).fill().map(() => Array(3).fill('o')), // Orange
+                    'R': Array(3).fill().map(() => Array(3).fill('r'))  // Red
+                };
+            }
+            
+            rotateFace(face) {
+                const faceData = this.faces[face];
+                const rotated = Array(3).fill().map(() => Array(3));
+                
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        rotated[j][2 - i] = faceData[i][j];
+                    }
+                }
+                
+                this.faces[face] = rotated;
+                
+                switch (face) {
+                    case 'F': this.rotateFrontEdges(); break;
+                    case 'B': this.rotateBackEdges(); break;
+                    case 'U': this.rotateUpEdges(); break;
+                    case 'D': this.rotateDownEdges(); break;
+                    case 'L': this.rotateLeftEdges(); break;
+                    case 'R': this.rotateRightEdges(); break;
+                }
+            }
+            
+            rotateFaceCounter(face) {
+                this.rotateFace(face);
+                this.rotateFace(face);
+                this.rotateFace(face);
+            }
+            
+            rotateFrontEdges() {
+                const temp = this.faces['U'][2].slice();
+                
+                this.faces['U'][2][0] = this.faces['L'][2][2];
+                this.faces['U'][2][1] = this.faces['L'][1][2];
+                this.faces['U'][2][2] = this.faces['L'][0][2];
+                
+                this.faces['L'][0][2] = this.faces['D'][0][0];
+                this.faces['L'][1][2] = this.faces['D'][0][1];
+                this.faces['L'][2][2] = this.faces['D'][0][2];
+                
+                this.faces['D'][0][0] = this.faces['R'][2][0];
+                this.faces['D'][0][1] = this.faces['R'][1][0];
+                this.faces['D'][0][2] = this.faces['R'][0][0];
+                
+                this.faces['R'][0][0] = temp[2];
+                this.faces['R'][1][0] = temp[1];
+                this.faces['R'][2][0] = temp[0];
+            }
+            
+            rotateBackEdges() {
+                const temp = this.faces['U'][0].slice();
+                
+                this.faces['U'][0][0] = this.faces['R'][0][2];
+                this.faces['U'][0][1] = this.faces['R'][1][2];
+                this.faces['U'][0][2] = this.faces['R'][2][2];
+                
+                this.faces['R'][0][2] = this.faces['D'][2][2];
+                this.faces['R'][1][2] = this.faces['D'][2][1];
+                this.faces['R'][2][2] = this.faces['D'][2][0];
+                
+                this.faces['D'][2][2] = this.faces['L'][2][0];
+                this.faces['D'][2][1] = this.faces['L'][1][0];
+                this.faces['D'][2][0] = this.faces['L'][0][0];
+                
+                this.faces['L'][0][0] = temp[2];
+                this.faces['L'][1][0] = temp[1];
+                this.faces['L'][2][0] = temp[0];
+            }
+            
+            rotateUpEdges() {
+                const temp = this.faces['F'][0].slice();
+                
+                this.faces['F'][0][0] = this.faces['R'][0][0];
+                this.faces['F'][0][1] = this.faces['R'][0][1];
+                this.faces['F'][0][2] = this.faces['R'][0][2];
+                
+                this.faces['R'][0][0] = this.faces['B'][0][0];
+                this.faces['R'][0][1] = this.faces['B'][0][1];
+                this.faces['R'][0][2] = this.faces['B'][0][2];
+                
+                this.faces['B'][0][0] = this.faces['L'][0][0];
+                this.faces['B'][0][1] = this.faces['L'][0][1];
+                this.faces['B'][0][2] = this.faces['L'][0][2];
+                
+                this.faces['L'][0][0] = temp[0];
+                this.faces['L'][0][1] = temp[1];
+                this.faces['L'][0][2] = temp[2];
+            }
+            
+            rotateDownEdges() {
+                const temp = this.faces['F'][2].slice();
+                
+                this.faces['F'][2][0] = this.faces['L'][2][0];
+                this.faces['F'][2][1] = this.faces['L'][2][1];
+                this.faces['F'][2][2] = this.faces['L'][2][2];
+                
+                this.faces['L'][2][0] = this.faces['B'][2][0];
+                this.faces['L'][2][1] = this.faces['B'][2][1];
+                this.faces['L'][2][2] = this.faces['B'][2][2];
+                
+                this.faces['B'][2][0] = this.faces['R'][2][0];
+                this.faces['B'][2][1] = this.faces['R'][2][1];
+                this.faces['B'][2][2] = this.faces['R'][2][2];
+                
+                this.faces['R'][2][0] = temp[0];
+                this.faces['R'][2][1] = temp[1];
+                this.faces['R'][2][2] = temp[2];
+            }
+            
+            rotateLeftEdges() {
+                const temp = [this.faces['U'][0][0], this.faces['U'][1][0], this.faces['U'][2][0]];
+                
+                this.faces['U'][0][0] = this.faces['B'][2][2];
+                this.faces['U'][1][0] = this.faces['B'][1][2];
+                this.faces['U'][2][0] = this.faces['B'][0][2];
+                
+                this.faces['B'][0][2] = this.faces['D'][2][0];
+                this.faces['B'][1][2] = this.faces['D'][1][0];
+                this.faces['B'][2][2] = this.faces['D'][0][0];
+                
+                this.faces['D'][0][0] = this.faces['F'][0][0];
+                this.faces['D'][1][0] = this.faces['F'][1][0];
+                this.faces['D'][2][0] = this.faces['F'][2][0];
+                
+                this.faces['F'][0][0] = temp[0];
+                this.faces['F'][1][0] = temp[1];
+                this.faces['F'][2][0] = temp[2];
+            }
+            
+            rotateRightEdges() {
+                const temp = [this.faces['U'][0][2], this.faces['U'][1][2], this.faces['U'][2][2]];
+                
+                this.faces['U'][0][2] = this.faces['F'][0][2];
+                this.faces['U'][1][2] = this.faces['F'][1][2];
+                this.faces['U'][2][2] = this.faces['F'][2][2];
+                
+                this.faces['F'][0][2] = this.faces['D'][0][2];
+                this.faces['F'][1][2] = this.faces['D'][1][2];
+                this.faces['F'][2][2] = this.faces['D'][2][2];
+                
+                this.faces['D'][0][2] = this.faces['B'][2][0];
+                this.faces['D'][1][2] = this.faces['B'][1][0];
+                this.faces['D'][2][2] = this.faces['B'][0][0];
+                
+                this.faces['B'][0][0] = temp[2];
+                this.faces['B'][1][0] = temp[1];
+                this.faces['B'][2][0] = temp[0];
+            }
+            
+            scramble(moves = 20) {
+                const faces = ['F', 'B', 'U', 'D', 'L', 'R'];
+                const directions = ['', "'"];
+                
+                for (let i = 0; i < moves; i++) {
+                    const face = faces[Math.floor(Math.random() * faces.length)];
+                    const direction = directions[Math.floor(Math.random() * directions.length)];
+                    
+                    if (direction === "'") {
+                        this.rotateFaceCounter(face);
+                    } else {
+                        this.rotateFace(face);
+                    }
+                }
+            }
+            
+            isSolved() {
+                for (const face in this.faces) {
+                    const color = this.faces[face][0][0];
+                    for (let i = 0; i < 3; i++) {
+                        for (let j = 0; j < 3; j++) {
+                            if (this.faces[face][i][j] !== color) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+            
+            toString() {
+                let str = '';
+                const order = ['U', 'L', 'F', 'R', 'B', 'D'];
+                
+                for (const face of order) {
+                    for (let i = 0; i < 3; i++) {
+                        for (let j = 0; j < 3; j++) {
+                            str += this.faces[face][i][j];
+                        }
+                    }
+                }
+                
+                return str;
+            }
+            
+            solve() {
+                const solution = [];
+                const cubeCopy = new RubiksCube();
+                cubeCopy.faces = JSON.parse(JSON.stringify(this.faces));
+                
+                // Simple solving algorithm (placeholder)
+                while (!cubeCopy.isSolved()) {
+                    const faces = ['F', 'B', 'U', 'D', 'L', 'R'];
+                    const face = faces[Math.floor(Math.random() * faces.length)];
+                    cubeCopy.rotateFace(face);
+                    solution.push(face);
+                    
+                    // Prevent infinite loops
+                    if (solution.length > 100) break;
+                }
+                
+                return solution;
+            }
+        }
+
+        // UI Handling
+        document.addEventListener('DOMContentLoaded', () => {
+            const cube = new RubiksCube();
+            const cube3d = document.getElementById('cube-3d');
+            const statusEl = document.getElementById('status');
+            const stepsContainer = document.getElementById('steps-container');
+            
+            // Color mapping
+            const colors = {
+                'r': '#e74c3c', // Red
+                'g': '#2ecc71', // Green
+                'b': '#3498db', // Blue
+                'y': '#f1c40f', // Yellow
+                'o': '#e67e22', // Orange
+                'w': '#ecf0f1'  // White
+            };
+            
+            // Create 3D cube faces
+            function create3dCube() {
+                cube3d.innerHTML = '';
+                
+                // Create faces in the correct order
+                const faces = [
+                    { name: 'front', class: 'front', face: 'F' },
+                    { name: 'back', class: 'back', face: 'B' },
+                    { name: 'right', class: 'right', face: 'R' },
+                    { name: 'left', class: 'left', face: 'L' },
+                    { name: 'top', class: 'top', face: 'U' },
+                    { name: 'bottom', class: 'bottom', face: 'D' }
+                ];
+                
+                faces.forEach(faceData => {
+                    const faceEl = document.createElement('div');
+                    faceEl.className = `face ${faceData.class}`;
+                    
+                    // Create stickers
+                    for (let i = 0; i < 3; i++) {
+                        for (let j = 0; j < 3; j++) {
+                            const sticker = document.createElement('div');
+                            sticker.className = 'sticker';
+                            sticker.style.backgroundColor = colors[cube.faces[faceData.face][i][j]];
+                            faceEl.appendChild(sticker);
+                        }
+                    }
+                    
+                    cube3d.appendChild(faceEl);
+                });
+            }
+            
+            // Update status display
+            function updateStatus() {
+                if (cube.isSolved()) {
+                    statusEl.textContent = 'Cube is solved!';
+                    statusEl.className = 'status solved';
+                } else {
+                    statusEl.textContent = 'Cube is scrambled';
+                    statusEl.className = 'status scrambled';
+                }
+            }
+            
+            // Display solution steps
+            function displaySolutionSteps(steps) {
+                stepsContainer.innerHTML = '';
+                
+                if (steps.length === 0) {
+                    stepsContainer.innerHTML = '<div class="step">Cube is already solved!</div>';
+                    return;
+                }
+                
+                steps.forEach((step, index) => {
+                    const stepEl = document.createElement('div');
+                    stepEl.className = 'step';
+                    stepEl.innerHTML = `
+                        <span class="step-number">${index + 1}.</span>
+                        <span class="move">${step}</span>
+                        <span>Rotate ${step.replace("'", " counter-clockwise")} face</span>
+                    `;
+                    stepsContainer.appendChild(stepEl);
+                });
+            }
+            
+            // Scramble button
+            document.getElementById('scramble').addEventListener('click', () => {
+                cube.scramble();
+                create3dCube();
+                updateStatus();
+                stepsContainer.innerHTML = '<div class="step">Cube scrambled. Click "Solve Cube" to see solution steps.</div>';
+            });
+            
+            // Solve button
+            document.getElementById('solve').addEventListener('click', () => {
+                const solution = cube.solve();
+                displaySolutionSteps(solution);
+                updateStatus();
+            });
+            
+            // Reset button
+            document.getElementById('reset').addEventListener('click', () => {
+                cube.reset();
+                create3dCube();
+                updateStatus();
+                stepsContainer.innerHTML = '<div class="step">Cube reset to solved state.</div>';
+            });
+            
+            // Manual rotation buttons
+            document.querySelectorAll('[data-rotation]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const rotation = button.getAttribute('data-rotation');
+                    const face = rotation[0];
+                    const isCounter = rotation.length > 1 && rotation[1] === "'";
+                    
+                    if (isCounter) {
+                        cube.rotateFaceCounter(face);
+                    } else {
+                        cube.rotateFace(face);
+                    }
+                    
+                    create3dCube();
+                    updateStatus();
+                    stepsContainer.innerHTML = `<div class="step">Rotated: <span class="move">${rotation}</span></div>`;
+                });
+            });
+            
+            // Initial setup
+            create3dCube();
+            updateStatus();
+        });
+    </script>
+</body>
+</html>
