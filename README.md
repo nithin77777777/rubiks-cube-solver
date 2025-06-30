@@ -39,7 +39,7 @@ No installation required. Just open the HTML file in a modern web browser.
 rubiks-cube-solver/
 ├── index.html        # Main application file
 ├── README.md         # Project documentation
-└── screenshot.png    # Project screenshot (optional)
+
 ```
 
 ## How to Contribute
